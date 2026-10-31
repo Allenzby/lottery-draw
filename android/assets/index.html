@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2f54eb">
+<title>摇号软件</title>
+<style>
+:root{
+  --blue:#2f54eb; --blue-d:#1d3fd0; --bg:#f4f6fb; --card:#ffffff;
+  --green:#15803d; --green-bg:#dcfce7; --green-bd:#86efac;
+  --gray:#6b7280; --line:#e5e7eb;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:#1f2937;
+  font-family:-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; overflow:hidden;
+  overscroll-behavior:none;
+}
+header{
+  background:linear-gradient(135deg,#4c7dff,#1d3fd0); color:#fff;
+  padding:calc(14px + env(safe-area-inset-top)) 16px 14px;
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 10px rgba(29,63,208,.25); flex:0 0 auto;
+}
+header h1{margin:0; font-size:19px; font-weight:700; letter-spacing:.5px;}
+#settingsBtn{
+  background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:10px;
+  padding:8px 12px; font-size:14px; font-family:inherit; cursor:pointer;
+}
+main{
+  flex:1 1 auto; display:flex; flex-direction:column; gap:12px;
+  padding:14px 14px 0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+.range{font-size:15px; font-weight:600; flex:0 0 auto;}
+.controls{display:flex; flex-wrap:wrap; align-items:center; gap:8px; flex:0 0 auto;}
+.controls label{font-size:15px; flex:0 0 auto;}
+#count{
+  width:86px; padding:9px 6px; font-size:17px; text-align:center;
+  border:1px solid #d1d5db; border-radius:10px; background:#fff;
+  font-family:inherit; color:inherit; -moz-appearance:textfield;
+}
+#count::-webkit-outer-spin-button,#count::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.hint{color:var(--gray); font-size:12px; flex:1 1 auto;}
+button.primary{
+  background:var(--blue); color:#fff; border:0; border-radius:12px;
+  padding:12px 24px; font-size:16px; font-weight:700; font-family:inherit;
+  box-shadow:0 4px 12px rgba(47,84,235,.28); cursor:pointer; flex:0 0 auto;
+  transition:transform .08s, opacity .15s;
+}
+button.primary:active{transform:scale(.97);}
+button.primary:disabled{opacity:.65; box-shadow:none;}
+.grid{
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:12px; display:grid; gap:9px; align-content:start;
+  grid-template-columns:repeat(5,1fr); min-height:110px; flex:0 0 auto;
+}
+.cell{
+  aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+  border:1px solid #c7d2fe; border-radius:12px; background:#eef2ff; color:var(--blue);
+  font-weight:800; font-size:clamp(16px,6.2vw,32px); font-variant-numeric:tabular-nums;
+  transition:background .18s, color .18s, border-color .18s;
+}
+.cell.done{background:var(--green-bg); color:var(--green); border-color:var(--green-bd);}
+.status{color:var(--gray); font-size:13px; padding:2px 2px calc(12px + env(safe-area-inset-bottom)); flex:0 0 auto;}
+.mask{position:fixed; inset:0; background:rgba(17,24,39,.45); display:none; align-items:flex-end; z-index:10;}
+.mask.show{display:flex;}
+.sheet{
+  background:#fff; width:100%; border-radius:18px 18px 0 0;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  animation:up .18s ease-out;
+}
+@keyframes up{from{transform:translateY(16px);opacity:.6}to{transform:none;opacity:1}}
+.sheet h2{margin:0 0 14px; font-size:17px;}
+.row{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+.row label{flex:0 0 76px; font-size:15px;}
+.row input{
+  flex:1 1 auto; padding:10px; font-size:16px; border:1px solid #d1d5db;
+  border-radius:10px; font-family:inherit; color:inherit; -moz-appearance:textfield;
+}
+.row input::-webkit-outer-spin-button,.row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.actions{display:flex; gap:10px; margin-top:4px;}
+.actions button{flex:1 1 0; padding:12px; font-size:16px; border-radius:12px; border:0; font-family:inherit; cursor:pointer;}
+.btn-ghost{background:#eef2f7; color:#374151;}
+.btn-main{background:var(--blue); color:#fff; font-weight:700;}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">摇号软件</h1>
+  <button id="settingsBtn">⚙ 设置</button>
+</header>
+
+<main>
+  <div class="range" id="rangeText">抽取范围：-</div>
+  <div class="controls">
+    <label for="count">摇号数量</label>
+    <input id="count" type="number" inputmode="numeric" min="1" value="1">
+    <span class="hint" id="maxHint"></span>
+    <button class="primary" id="startBtn">开始摇号</button>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="status" id="status">准备就绪</div>
+</main>
+
+<div class="mask" id="mask">
+  <div class="sheet">
+    <h2>设置抽取范围</h2>
+    <div class="row"><label for="setMin">起始数字</label><input id="setMin" type="number" inputmode="numeric"></div>
+    <div class="row"><label for="setMax">结束数字</label><input id="setMax" type="number" inputmode="numeric"></div>
+    <div class="row"><label for="setDefault">默认数量</label><input id="setDefault" type="number" inputmode="numeric"></div>
+    <div class="actions">
+      <button class="btn-ghost" id="cancelBtn">取消</button>
+      <button class="btn-main" id="saveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var DEFAULTS = {
+    title: "摇号软件", min: 1, max: 100, default_count: 5,
+    animation_ms: 1200, interval_ms: 60
+  };
+  var STORE_KEY = "lottery_cfg";
+
+  var titleEl = document.getElementById("title");
+  var rangeEl = document.getElementById("rangeText");
+  var countEl = document.getElementById("count");
+  var hintEl = document.getElementById("maxHint");
+  var startBtn = document.getElementById("startBtn");
+  var gridEl = document.getElementById("grid");
+  var statusEl = document.getElementById("status");
+  var mask = document.getElementById("mask");
+  var setMin = document.getElementById("setMin");
+  var setMax = document.getElementById("setMax");
+  var setDefault = document.getElementById("setDefault");
+
+  var cfg = loadCfg();
+  var running = false;
+  var timer = null;
+  var cells = [];
+
+  function loadCfg() {
+    var base = Object.assign({}, DEFAULTS, window.APP_CONFIG || {});
+    try {
+      var saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+      if (saved && typeof saved === "object") {
+        if (typeof saved.min === "number") base.min = saved.min;
+        if (typeof saved.max === "number") base.max = saved.max;
+        if (typeof saved.default_count === "number") base.default_count = saved.default_count;
+      }
+    } catch (e) { /* 忽略损坏的本地配置 */ }
+    if (base.min > base.max) { var t = base.min; base.min = base.max; base.max = t; }
+    return base;
+  }
+
+  function poolSize() { return cfg.max - cfg.min + 1; }
+
+  function applyCfg() {
+    var pool = poolSize();
+    titleEl.textContent = cfg.title;
+    rangeEl.textContent = "抽取范围：" + cfg.min + " ~ " + cfg.max + "（共 " + pool + " 个数字）";
+    countEl.min = 1;
+    countEl.max = pool;
+    countEl.value = Math.min(Math.max(1, cfg.default_count | 0), pool);
+    hintEl.textContent = "最多 " + pool;
+  }
+
+  function setStatus(text) { statusEl.textContent = text; }
+
+  function buildGrid(n) {
+    var cols = Math.min(n, 5);
+    gridEl.style.gridTemplateColumns = "repeat(" + cols + ",1fr)";
+    gridEl.innerHTML = "";
+    cells = [];
+    for (var i = 0; i < n; i++) {
+      var d = document.createElement("div");
+      d.className = "cell";
+      d.textContent = "?";
+      gridEl.appendChild(d);
+      cells.push(d);
+    }
+  }
+
+  // 不放回抽样（部分洗牌）
+  function sample(n, pool) {
+    var arr = new Array(pool);
+    for (var i = 0; i < pool; i++) arr[i] = i;
+    for (var k = 0; k < n; k++) {
+      var j = k + Math.floor(Math.random() * (pool - k));
+      var tmp = arr[k]; arr[k] = arr[j]; arr[j] = tmp;
+    }
+    return arr.slice(0, n);
+  }
+
+  function start() {
+    if (running) return;
+    var pool = poolSize();
+    var n = parseInt(countEl.value, 10);
+    if (!isFinite(n) || n < 1 || n > pool) {
+      alert("请输入 1 ~ " + pool + " 之间的摇号数量。");
+      return;
+    }
+    countEl.value = n;
+
+    running = true;
+    startBtn.disabled = true;
+    startBtn.textContent = "摇号中…";
+    setStatus("正在摇号，请稍候…");
+    buildGrid(n);
+
+    var results = sample(n, pool).map(function (i) { return i + cfg.min; });
+    var interval = Math.max(30, cfg.interval_ms | 0);
+    var ticks = Math.max(1, Math.floor((cfg.animation_ms | 0) / interval));
+    var tick = 0;
+
+    timer = setInterval(function () {
+      tick++;
+      if (tick > ticks) {
+        clearInterval(timer);
+        timer = null;
+        for (var i = 0; i < cells.length; i++) {
+          cells[i].textContent = results[i];
+          cells[i].classList.add("done");
+        }
+        if (navigator.vibrate) navigator.vibrate([0, 25, 50, 25]);
+        var sorted = results.slice().sort(function (a, b) { return a - b; });
+        setStatus("完成！共抽出 " + n + " 个数字：" + sorted.join("、"));
+        startBtn.disabled = false;
+        startBtn.textContent = "开始摇号";
+        running = false;
+        return;
+      }
+      for (var k = 0; k < cells.length; k++) {
+        cells[k].textContent = cfg.min + Math.floor(Math.random() * pool);
+      }
+    }, interval);
+  }
+
+  function openSettings() {
+    setMin.value = cfg.min;
+    setMax.value = cfg.max;
+    setDefault.value = cfg.default_count;
+    mask.classList.add("show");
+  }
+
+  function closeSettings() { mask.classList.remove("show"); }
+
+  function saveSettings() {
+    var lo = parseInt(setMin.value, 10);
+    var hi = parseInt(setMax.value, 10);
+    var dc = parseInt(setDefault.value, 10);
+    if (!isFinite(lo) || !isFinite(hi)) { alert("请输入有效的数字范围。"); return; }
+    if (lo > hi) { var t = lo; lo = hi; hi = t; }
+    if (hi - lo + 1 < 1) { alert("范围无效。"); return; }
+    if (!isFinite(dc) || dc < 1) dc = 1;
+    if (dc > hi - lo + 1) dc = hi - lo + 1;
+
+    cfg.min = lo;
+    cfg.max = hi;
+    cfg.default_count = dc;
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        min: cfg.min, max: cfg.max, default_count: cfg.default_count
+      }));
+    } catch (e) { /* 存储失败不影响使用 */ }
+
+    applyCfg();
+    closeSettings();
+    buildGrid(0);
+    gridEl.innerHTML = "";
+    setStatus("设置已保存：范围 " + cfg.min + " ~ " + cfg.max);
+  }
+
+  startBtn.addEventListener("click", start);
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("cancelBtn").addEventListener("click", closeSettings);
+  document.getElementById("saveBtn").addEventListener("click", saveSettings);
+  mask.addEventListener("click", function (e) { if (e.target === mask) closeSettings(); });
+  countEl.addEventListener("keydown", function (e) { if (e.key === "Enter") start(); });
+
+  applyCfg();
+  buildGrid(0);
+  gridEl.innerHTML = "";
+})();
+</script>
+</body>
+</html>

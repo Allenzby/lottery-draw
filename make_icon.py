@@ -81,6 +81,30 @@ def inject_into_app(b64):
     print("已注入 app.py")
 
 
+def render_android(size):
+    """安卓启动图标：留一点内边距，避免被启动器裁切"""
+    inner = int(round(size * 0.88))
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    art = render(inner)
+    off = (size - inner) // 2
+    canvas.paste(art, (off, off), art)
+    return canvas
+
+
+def write_android_icons():
+    """生成 android/res/mipmap-*/ic_launcher.png"""
+    sizes = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+    base = os.path.join(OUT_DIR, "android", "res")
+    if not os.path.isdir(base):
+        print("未找到 android/res，跳过安卓图标")
+        return
+    for dpi, px in sizes.items():
+        folder = os.path.join(base, "mipmap-" + dpi)
+        os.makedirs(folder, exist_ok=True)
+        render_android(px).save(os.path.join(folder, "ic_launcher.png"))
+    print("已生成安卓图标（5 个密度）")
+
+
 def main():
     images = [render(s) for s in SIZES]
     ico_path = os.path.join(OUT_DIR, "icon.ico")
@@ -94,6 +118,7 @@ def main():
         b64 = base64.b64encode(f.read()).decode("ascii")
     print("png base64 length:", len(b64))
     inject_into_app(b64)
+    write_android_icons()
 
 
 if __name__ == "__main__":

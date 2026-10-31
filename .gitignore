@@ -7,8 +7,14 @@ build/
 dist/
 *.spec
 
-# 可执行文件（用 GitHub Release 分发）
+# 可执行文件 / 安装包（用 GitHub Release 分发）
 *.exe
+*.apk
+
+# 安卓构建产物与签名密钥（密钥请自行备份，勿提交）
+android/build/
+*.jks
+*.keystore
 
 # 打包 / 验证过程中的临时文件
 _*.png
